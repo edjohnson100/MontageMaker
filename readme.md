@@ -1,6 +1,8 @@
-# Montage Maker - User Guide
+# Montage Maker - User Guide (v2.1)
 
-A Python utility to batch-process folders of images into grid layouts using ImageMagick. It supports robust configuration via presets (for social media sizing), manual overrides, cropping, and labeling.
+A Python utility to batch-process folders of mixed images into grid layouts using ImageMagick. It features robust configuration presets, automatic image sorting, logging, and extensive layout controls.
+
+![The San Juan Mountains are beautiful](resources/MontageMakerIcon.png)
 
 ## 1. Prerequisites & Installation
 
@@ -36,8 +38,8 @@ Open a new terminal (Command Prompt, PowerShell, or Bash) and type:
 ```bash
 montage -version
 ```
-**Success:** You see version details (e.g., `Version: ImageMagick 7.1.1...`).
-**Failure:** You see `command not found`. *Solution: Restart your terminal or reinstall/check PATH settings.*
+* **Success:** You see version details (e.g., `Version: ImageMagick 7.1.1...`).
+* **Failure:** You see `command not found`. *Solution: Restart your terminal or reinstall/check PATH settings.*
 
 ---
 
@@ -54,15 +56,19 @@ python3 montage_maker.py [GRID] [OPTIONS]
 
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `GRID` | Optional* | `2x2` | The layout columns and rows (e.g., `2x2`). Required unless using a preset that defines it. |
+| `GRID` | Optional* | `2x2` | Layout columns x rows (e.g., `2x2`). Overrides preset. |
 | `--preset` | Optional | None | Loads settings from `config.ini`. |
-| `--ext` | Optional | `jpg` | The file extension to look for (e.g., `png`, `jpeg`). |
-| `--size` | Optional | `500x500+10+10` | The geometry of each tile: `WxH+BorderX+BorderY`. **Use quotes.** |
-| `--label` | Flag | `False` | If present, prints the filename underneath the image. |
-| `--prefix`| Optional | `montage` | The prefix for output files (e.g., `my_vacation` becomes `my_vacation_01.jpg`). |
-| `--crop` | Optional | None | Crops the source image to `WxH` from the center *before* fitting it to the tile. |
+| `--ext` | Optional | `png` | **OUTPUT** file format (e.g., `jpg`, `png`). |
+| `--size` | Optional | `500x500+10+10` | Tile geometry: `WxH+BorderX+BorderY`. **Use quotes.** |
+| `--label` | Flag | `False` | Forces filename labels ON (overrides config). |
+| `--fontsize`| Optional | `12` | Font point size for labels. |
+| `--prefix`| Optional | `montage` | Output filename prefix (e.g., `my_vacation_01.png`). |
+| `--crop` | Optional | None | Crops source images to `WxH` (centered) before mounting. |
 
 *\*Grid is optional if a preset is provided.*
+
+**Note on Input Files:**
+You do not need to specify input extensions. The script automatically finds and sorts all valid image files (`jpg`, `png`, `bmp`, `gif`, `webp`, etc.) in the current folder alphabetically.
 
 ---
 
@@ -78,14 +84,24 @@ size = 1080x1080+0+0
 crop = 1080x1080
 ext = jpg
 prefix = ig_post
+labels = off
+fontsize = 12
 
-[youtube_thumb]
-grid = 2x2
-size = 640x360+0+0
-crop = 1280x720
-ext = jpg
-prefix = yt_thumb
+[contact_sheet]
+; High density sheet with labels on
+grid = 4x4
+size = 300x300+5+5
+crop = 300x300
+ext = png
+prefix = contact
+labels = on
+fontsize = 10
 ```
+
+**Label Logic:**
+* If `config.ini` says `labels = on` (or `true`), labels will appear.
+* If you type `--label` in the terminal, labels will appear (even if config says off).
+* If neither is set, no labels appear.
 
 ---
 
@@ -109,15 +125,23 @@ You just want a quick 2x2 grid of 500px squares.
 python montage_maker.py 2x2 --size "500x500+5+5"
 ```
 
-### Scenario D: Complex Crop
-Cropping HD video frames (1920x1080) into a 3x3 contact sheet.
+### Scenario D: Large Labels
+You are making a proof sheet and need the filenames to be very readable.
 ```bash
-python montage_maker.py 3x3 --crop "1920x1080" --prefix "dailies"
+python montage_maker.py 3x3 --label --fontsize 24
 ```
 
 ---
 
-## 5. Troubleshooting
+## 5. Logging
+
+Every time you run the script, it generates two outputs:
+1.  **Console Output:** Real-time progress printed to your terminal.
+2.  **Log File:** A file named `process.log` is created (or overwritten) in the folder. This contains a detailed record of which files were processed, the exact ImageMagick commands used, and any errors.
+
+---
+
+## 6. Troubleshooting
 
 **Error: `montage: command not found`**
 * **Cause:** ImageMagick is not installed or not in your system PATH.
@@ -132,13 +156,13 @@ python montage_maker.py 3x3 --crop "1920x1080" --prefix "dailies"
 
 ---
 
-## 6. Bonus Tip: Creating Shortcuts (Mac/Linux)
+## 7. Bonus Tip: Creating Shortcuts (Mac/Linux)
 
 If you find yourself using the same complex command often, you can create a permanent shortcut (alias).
 
 1.  Open your shell configuration file (usually `~/.bashrc` or `~/.zshrc`).
 2.  Add a line like this at the bottom:
     ```bash
-    alias make_sheets='python3 /Users/ed/Scripts/montage_maker.py --preset instagram_post'
+    alias make_sheets='python3 /Users/ed/Scripts/montage_maker.py --preset contact_sheet'
     ```
 3.  Save and restart your terminal. Now just type `make_sheets`!
