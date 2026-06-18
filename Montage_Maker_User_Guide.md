@@ -120,9 +120,9 @@ The app uses a three-column layout:
 
 | Column | What's in it |
 |---|---|
-| **Left (40%)** | Image folder, Output folder, **Generate Montage** button, and output previews with a count of montages created |
-| **Middle (30%)** | Preset selector, Grid, Tile size & spacing, Background, Output format |
-| **Right (30%)** | Output filename prefix, Text (title, font, labels), Effects |
+| **Left (~40%)** | Image folder, Output folder, **Input Image Files** selection panel, **Generate Montage** button, and output previews |
+| **Middle (~25%)** | Preset selector, Grid, Tile size & spacing, Background, Output format |
+| **Right (~35%)** | Output filename prefix, Text (title, font, colors, sizes, labels), Effects |
 
 > **[SCREENSHOT: Annotated version of 2026-06-17_16-07-41.png with callouts for each column]**
 
@@ -204,13 +204,17 @@ The base name for your generated files. Pages are numbered automatically.
 | Field | What it does |
 |---|---|
 | **Title** | A text banner printed above the entire montage |
-| **Font name** | The ImageMagick font name used for all text (e.g. `Arial`, `Helvetica`) |
-| **Show filename labels** | Adds the source filename below each tile — great for contact sheets and documentation. Note that labels show the full filename, so long AI-generated filenames will appear in full. |
-| **Label font size** | Point size for the filename labels |
+| **Font name** | Font for all text — type to filter from a searchable list of installed fonts |
+| **Text color** | Fill color for both the title and filename labels. Default is black — change this when your background is dark. |
+| **Title size** | Point size for the title banner (independent of the label size) |
+| **Label size** | Point size for filename labels |
+| **Show filename labels** | Adds the source filename below each tile — great for contact sheets and documentation |
 
-> **[EXAMPLE OUTPUT: Contact sheet with filename labels under each tile]**
+> **Tip:** Title size and label size are fully independent — you can have a large, bold title at 48pt while keeping compact 10pt labels below each image.
 
 > **Tip:** The **Contact Sheet** preset has labels on by default — it's a handy reference for what labeled output looks like.
+
+> **[EXAMPLE OUTPUT: Contact sheet with filename labels under each tile]**
 
 ---
 
@@ -237,6 +241,19 @@ This is where things get fun.
 
 ---
 
+## Selecting Which Images to Include
+
+Just above the **Generate Montage** button is a collapsible **Input Image Files** panel. Expand it to see every image in your input folder, each with a small thumbnail preview and a checkbox.
+
+- Check the images you want included — unchecked images are skipped entirely.
+- Use **All** / **None** to select or deselect everything at once.
+- The count in the header (e.g. "7 of 12 selected") stays visible even when the panel is collapsed, so you always know your current selection at a glance.
+- The list refreshes automatically when you change the input folder.
+
+> **Tip:** This is much faster than moving files in and out of the folder when you want to experiment with different subsets of your images.
+
+---
+
 ## Presets — Your Best Friends
 
 Presets are saved collections of all your settings. Instead of dialing in 15 different fields, you just pick a preset from the dropdown and you're ready to go. Montage Maker ships with eleven presets built in:
@@ -244,7 +261,7 @@ Presets are saved collections of all your settings. Instead of dialing in 15 dif
 | Preset | Grid | Description |
 |---|---|---|
 | **Contact Sheet** | 4×4 | 300px tiles with filename labels, cropped square — classic proof sheet |
-| **Filmstrip** | 4×1 | 480px tiles, Concatenate mode, black background — a seamless horizontal banner |
+| **Filmstrip** | 4×1 | 480px tiles, Concatenate mode, black background, proportional black borders — looks like a real film strip |
 | **Gallery Wall** | 2×2 | 500px tiles, beveled frame, drop shadow, warm linen background — framed prints on a wall |
 | **Instagram Post** | 2×2 | Cropped to 1080×1080, JPG — ready to upload |
 | **Instagram Story** | 1×1 | Cropped to 1080×1920, JPG — full-screen story / TikTok format |

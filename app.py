@@ -12,7 +12,7 @@ from nicegui import ui, app
 
 from montage_maker import create_montages, str_to_bool
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
 SESSION_FILE = SCRIPT_DIR / 'session.ini'
 
 _CONFIG_HEADER = """\
@@ -21,6 +21,20 @@ _CONFIG_HEADER = """\
 ; You can override any of these by passing the argument on the command line.
 
 """
+
+_DEFAULT_PRESETS = {
+    'Contact Sheet':   {'grid': '4x4',  'size': '300x300+5+5',    'prefix': 'contact',      'fontsize': '10', 'ext': 'png', 'labels': 'on',  'crop': '300x300',    'textcolor': '', 'titlesize': '24', 'title': 'Contact Sheet'},
+    'Filmstrip':       {'grid': '4x1',  'size': '480x480+0+0',    'background': '#000000',  'mode': 'Concatenate', 'prefix': 'filmstrip',  'fontsize': '12', 'ext': 'png', 'labels': 'off', 'textcolor': '#ffffff', 'titlesize': '24', 'title': 'Filmstrip', 'font': 'Arial', 'border': '12x30', 'bordercolor': '#000000'},
+    'Gallery Wall':    {'grid': '2x2',  'size': '500x500+20+20',  'background': '#f0ebe0',  'prefix': 'gallery',   'fontsize': '12', 'ext': 'png', 'labels': 'off', 'shadow': 'on', 'frame': '8x8+4+4', 'mattecolor': '#c8b89a', 'textcolor': '', 'titlesize': '24'},
+    'Instagram Post':  {'grid': '2x2',  'size': '1080x1080+0+0',  'prefix': 'ig_post',      'fontsize': '12', 'ext': 'jpg', 'labels': 'off', 'crop': '1080x1080',  'textcolor': '', 'titlesize': '24'},
+    'Instagram Story': {'grid': '1x1',  'size': '1080x1920+0+0',  'prefix': 'ig_story',     'fontsize': '12', 'ext': 'jpg', 'labels': 'off', 'crop': '1080x1920',  'textcolor': '', 'titlesize': '24'},
+    'Link Preview':    {'grid': '2x2',  'size': '600x315+5+5',    'prefix': 'link_preview', 'fontsize': '12', 'ext': 'jpg', 'labels': 'off', 'crop': '1200x630',   'textcolor': '', 'titlesize': '24'},
+    'Pinterest Pin':   {'grid': '2x3',  'size': '500x750+10+10',  'prefix': 'pinterest',    'fontsize': '12', 'ext': 'jpg', 'labels': 'off', 'crop': '1000x1500',  'textcolor': '', 'titlesize': '24'},
+    'Polaroid':        {'grid': '3x2',  'size': '450x450+30+30',  'background': '#1c1c1c',  'prefix': 'polaroid',  'fontsize': '12', 'ext': 'png', 'labels': 'off', 'polaroid': 'random', 'textcolor': '#ffffff', 'titlesize': '24'},
+    'Square 3x3':      {'grid': '3x3',  'size': '720x720+0+0',    'prefix': 'square',       'fontsize': '12', 'ext': 'png', 'labels': 'off', 'textcolor': '', 'titlesize': '24'},
+    'X Post':          {'grid': '2x2',  'size': '600x337+5+5',    'prefix': 'x_post',       'fontsize': '12', 'ext': 'jpg', 'labels': 'off', 'crop': '1200x675',   'textcolor': '', 'titlesize': '24'},
+    'YouTube Thumb':   {'grid': '2x2',  'size': '640x360+0+0',    'prefix': 'yt_thumb',     'fontsize': '12', 'ext': 'png', 'labels': 'off', 'crop': '1280x720',   'textcolor': '', 'titlesize': '24'},
+}
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +70,15 @@ def _write_config(config):
     with open(SCRIPT_DIR / 'config.ini', 'w') as f:
         f.write(_CONFIG_HEADER)
         sorted_cfg.write(f)
+
+
+def _ensure_default_config():
+    if (SCRIPT_DIR / 'config.ini').exists():
+        return
+    config = configparser.ConfigParser()
+    for section, values in _DEFAULT_PRESETS.items():
+        config[section] = values
+    _write_config(config)
 
 
 def _save_preset(name, values):
@@ -150,6 +173,24 @@ def _save_theme(name):
         config.write(f)
 
 
+_ensure_default_config()
+
+
+def _load_imagemagick_fonts() -> list[str]:
+    import re
+    for cmd in (['magick', '-list', 'font'], ['convert', '-list', 'font']):
+        try:
+            out = subprocess.run(cmd, capture_output=True, text=True, timeout=10).stdout
+            fonts = sorted({m.group(1) for m in re.finditer(r'^\s+Font:\s+(.+)$', out, re.MULTILINE)})
+            if fonts:
+                return fonts
+        except Exception:
+            continue
+    return []
+
+_FONTS = _load_imagemagick_fonts()
+
+
 # ---------------------------------------------------------------------------
 # Geometry parsing / assembly
 # ---------------------------------------------------------------------------
@@ -228,15 +269,51 @@ def _latest_prefix(out_dir, prefix, ext):
     return latest
 
 
+def _win32_open_raised(path):
+    """Open path in Explorer then raise the window (runs in a background thread)."""
+    import ctypes, time
+    ole32  = ctypes.windll.ole32
+    user32 = ctypes.windll.user32
+    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_ulong, ctypes.c_long)
+
+    ole32.CoInitialize(None)   # COM required for ShellExecute on non-main threads
+    try:
+        os.startfile(path)
+        time.sleep(0.5)        # wait for Explorer window to appear
+
+        hwnds = []
+        @WNDENUMPROC
+        def cb(hwnd, _):
+            if user32.IsWindowVisible(hwnd):
+                cls = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(hwnd, cls, 256)
+                if cls.value in ('CabinetWClass', 'ExploreWClass'):
+                    hwnds.append(hwnd)
+            return True
+        user32.EnumWindows(cb, 0)
+
+        if hwnds:
+            hwnd = hwnds[-1]                    # last in Z-order = most recently opened
+            user32.ShowWindow(hwnd, 9)           # SW_RESTORE (un-minimise if needed)
+            # Synthesising a key event makes this process the last input receiver,
+            # which is required by Windows before SetForegroundWindow will succeed.
+            user32.keybd_event(0, 0, 0, 0)
+            user32.keybd_event(0, 0, 2, 0)      # KEYEVENTF_KEYUP
+            user32.SetForegroundWindow(hwnd)
+    finally:
+        ole32.CoUninitialize()
+
+
 def _open_folder(path):
     if not path or not os.path.isdir(path):
         return
     if sys.platform == 'win32':
-        os.startfile(path)
+        import threading
+        threading.Thread(target=_win32_open_raised, args=(path,), daemon=True).start()
     elif sys.platform == 'darwin':
-        subprocess.run(['open', path])
+        subprocess.Popen(['open', path])
     else:
-        subprocess.run(['xdg-open', path])
+        subprocess.Popen(['xdg-open', path])
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +331,7 @@ async def _serve_output_image(p: str, t: str = ''):
 def index():
     _saved_input, _saved_output = _load_session()
     _current_theme = _load_theme()
+    _image_selection: dict[str, bool] = {}   # filename → checked
 
     dark = ui.dark_mode()
     _t = THEMES.get(_current_theme, THEMES['Light'])
@@ -266,6 +344,52 @@ def index():
         dark.set_value(t['dark'])
         ui.colors(primary=t['primary'], secondary=t['secondary'], accent=t['accent'])
         _save_theme(name)
+
+    def _update_count():
+        total = len(_image_selection)
+        selected = sum(1 for v in _image_selection.values() if v)
+        _count_label.set_text(f'{selected} of {total} selected')
+
+    def refresh_image_list():
+        folder = folder_in.value.strip()
+        if not os.path.isdir(folder):
+            img_list_col.clear()
+            _count_label.set_text('0 of 0 selected')
+            return
+        valid_ext = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
+        found = sorted(
+            f for f in os.listdir(folder)
+            if os.path.isfile(os.path.join(folder, f))
+            and os.path.splitext(f)[1].lower() in valid_ext
+        )
+        new_sel = {f: _image_selection.get(f, True) for f in found}
+        _image_selection.clear()
+        _image_selection.update(new_sel)
+        img_list_col.clear()
+        with img_list_col:
+            for fname in found:
+                def make_handler(name):
+                    def on_change(e):
+                        _image_selection[name] = e.value
+                        _update_count()
+                    return on_change
+                src = f'/output-image?p={urllib.parse.quote(os.path.join(folder, fname))}'
+                with ui.row().classes('w-full items-center gap-2 py-0.5'):
+                    ui.checkbox('', value=_image_selection[fname],
+                                on_change=make_handler(fname))
+                    ui.image(src).style('width:40px; height:40px; object-fit:cover; border-radius:3px; flex-shrink:0')
+                    ui.label(fname).classes('text-sm truncate')
+        _update_count()
+
+    def select_all():
+        for k in _image_selection:
+            _image_selection[k] = True
+        refresh_image_list()
+
+    def select_none():
+        for k in _image_selection:
+            _image_selection[k] = False
+        refresh_image_list()
 
     def _pick_folder(title, starting_path):
         import tkinter as tk
@@ -285,6 +409,7 @@ def index():
             if not output_in.value.strip():
                 output_in.set_value(str(Path(folder) / 'Montages'))
             _save_session(folder_in.value, output_in.value)
+            refresh_image_list()
 
     def browse_output():
         start = output_in.value.strip() or folder_in.value.strip()
@@ -313,6 +438,8 @@ def index():
         bg_transparent_sw.set_value(str_to_bool(pc.get('transparent', 'false')))
         title_in.set_value(pc.get('title', ''))
         font_in.set_value(pc.get('font', ''))
+        text_color_in.set_value(pc.get('textcolor', '#000000'))
+        title_size_in.set_value(int(pc.get('titlesize', '24')))
         quality_in.set_value(int(pc.get('quality', '85')))
         mode_sel.set_value(pc.get('mode', ''))
         prefix_in.set_value(pc.get('prefix', 'montage'))
@@ -418,6 +545,13 @@ def index():
         else:
             polaroid = None
 
+        if not _image_selection:
+            refresh_image_list()
+        selected_files = sorted(f for f, checked in _image_selection.items() if checked)
+        if not selected_files:
+            ui.notify('No images selected — check at least one image.', color='warning')
+            return
+
         kwargs = dict(
             grid_size=grid_size,
             output_extension=ext,
@@ -431,6 +565,8 @@ def index():
             quality=int(quality_in.value or 85),
             title=title_in.value.strip(),
             font_name=font_in.value.strip(),
+            text_color=text_color_in.value or None,
+            title_size=int(title_size_in.value or 24) if title_in.value.strip() else None,
             shadow=shadow,
             frame=frame,
             mattecolor=frame_matte_in.value if frame_sw.value else None,
@@ -438,6 +574,7 @@ def index():
             bordercolor=border_color_in.value if border_sw.value else None,
             mode=mode_sel.value or None,
             polaroid=polaroid,
+            image_files=selected_files,
         )
         working = ui.notification('Generating montages…', spinner=True, timeout=0, close_button=False)
         original_cwd = os.getcwd()
@@ -474,12 +611,17 @@ def index():
                                sw_frame, fw_in, fh_in, fo_in, fi_in, fm_in,
                                sw_border, bw_in, bh_in, bc_in,
                                sw_polaroid, pa_in, pr_sw,
-                               m_sel, q_in, t_in, fn_in, sw_trans, bg_in):
+                               m_sel, q_in, t_in, fn_in, sw_trans, bg_in,
+                               tc_in=None, ts_in=None):
             """Shared helper: populate all new-feature widgets from a preset dict."""
             bg_in.set_value(pc.get('background', '#ffffff'))
             sw_trans.set_value(str_to_bool(pc.get('transparent', 'false')))
             t_in.set_value(pc.get('title', ''))
             fn_in.set_value(pc.get('font', ''))
+            if tc_in is not None:
+                tc_in.set_value(pc.get('textcolor', '#000000'))
+            if ts_in is not None:
+                ts_in.set_value(int(pc.get('titlesize', '24')))
             q_in.set_value(int(pc.get('quality', '85')))
             m_sel.set_value(pc.get('mode', ''))
 
@@ -534,7 +676,8 @@ def index():
                 mgr_frame_matte, mgr_border_sw, mgr_border_w, mgr_border_h, mgr_border_color,
                 mgr_polaroid_sw, mgr_polaroid_angle, mgr_polaroid_random,
                 mgr_mode_sel, mgr_quality, mgr_title, mgr_font,
-                mgr_transparent_sw, mgr_bg_color)
+                mgr_transparent_sw, mgr_bg_color,
+                tc_in=mgr_text_color, ts_in=mgr_title_size)
 
         def mgr_save():
             name = mgr_name.value.strip()
@@ -552,6 +695,8 @@ def index():
                 'transparent': 'on' if mgr_transparent_sw.value else 'off',
                 'title': mgr_title.value.strip(),
                 'font': mgr_font.value.strip(),
+                'textcolor': mgr_text_color.value or '',
+                'titlesize': str(int(mgr_title_size.value or 24)),
                 'quality': str(int(mgr_quality.value or 85)),
                 'mode': mgr_mode_sel.value or '',
                 'prefix': mgr_prefix.value or 'montage',
@@ -663,10 +808,14 @@ def index():
             ui.label('Text').classes('text-xs text-gray-400 mt-2')
             with ui.row().classes('w-full gap-4'):
                 mgr_title = ui.input('Title', value='').classes('flex-1')
-                mgr_font = ui.input('Font name', value='').classes('flex-1')
+                mgr_font = ui.select([''] + _FONTS, label='Font name', value='',
+                                     with_input=True, new_value_mode='add-unique').classes('flex-1')
+            with ui.row().classes('w-full items-center gap-3 mt-1'):
+                mgr_text_color = ui.color_input(label='Text color', value='#000000').classes('flex-1')
+                mgr_title_size = ui.number('Title size', value=24, min=6, precision=0).classes('flex-1')
+                mgr_fontsize   = ui.number('Label size', value=12, min=6, precision=0).classes('flex-1')
             with ui.row().classes('w-full items-center gap-4 mt-1'):
                 mgr_labels = ui.switch('Show filename labels')
-                mgr_fontsize = ui.number('Label font size', value=12, min=6, precision=0).classes('flex-1')
 
             ui.label('Effects').classes('text-xs text-gray-400 mt-2')
             with ui.row().classes('w-full gap-4'):
@@ -735,7 +884,7 @@ def index():
         dialog.open()
 
     # --- Main Layout ---
-    with ui.column().classes('w-full max-w-6xl mx-auto px-6 py-5 gap-4'):
+    with ui.column().classes('w-full mx-auto px-6 py-5 gap-4'):
         with ui.row().classes('w-full items-center justify-between'):
             ui.label('Montage Maker').classes('text-3xl font-bold tracking-tight')
             with ui.row().classes('items-center gap-2'):
@@ -749,7 +898,7 @@ def index():
         with ui.row().classes('w-full gap-5 items-start'):
 
             # ---- Left column: folders, generate, results ----
-            with ui.column().classes('gap-4').style('flex: 0 0 40%'):
+            with ui.column().classes('gap-4').style('flex: 1.6 1.1 0'):
 
                 with ui.card().classes('w-full p-4 gap-3'):
                     with ui.row().classes('w-full items-end gap-2'):
@@ -757,6 +906,7 @@ def index():
                             'Image folder',
                             placeholder='/path/to/your/images',
                             value=_saved_input or os.path.expanduser('~'),
+                            on_change=lambda e: refresh_image_list() if os.path.isdir(e.value.strip()) else None,
                         ).classes('flex-grow')
                         ui.button('Browse…', on_click=browse_input).props('flat color=primary')
                         ui.button('Open ↗', on_click=lambda: _open_folder(folder_in.value)).props('flat color=secondary')
@@ -768,6 +918,20 @@ def index():
                         ).classes('flex-grow')
                         ui.button('Browse…', on_click=browse_output).props('flat color=primary')
                         ui.button('Open ↗', on_click=lambda: _open_folder(output_in.value)).props('flat color=secondary')
+
+                with ui.column().classes('w-full gap-1'):
+                    with ui.row().classes('w-full items-center gap-2'):
+                        img_expansion = ui.expansion(
+                            'Input Image Files',
+                            on_value_change=lambda e: refresh_image_list() if e.value else None,
+                        ).classes('flex-1')
+                        _count_label = ui.label('0 of 0 selected').classes('text-xs text-gray-400 self-center')
+                    with img_expansion:
+                        with ui.row().classes('w-full gap-2 mb-2'):
+                            ui.button('All',  on_click=select_all).props('flat dense color=primary').classes('text-xs')
+                            ui.button('None', on_click=select_none).props('flat dense color=negative').classes('text-xs')
+                        with ui.scroll_area().style('max-height: 240px; width: 100%'):
+                            img_list_col = ui.column().classes('w-full gap-1')
 
                 ui.button('Generate Montage', on_click=generate).props(
                     'unelevated color=primary'
@@ -815,7 +979,7 @@ def index():
                         ext_sel = ui.select(['png', 'jpg', 'bmp', 'tiff'], label='Format', value='png')
 
             # ---- Right column: filename, text & effects ----
-            with ui.column().classes('gap-4').style('flex: 1'):
+            with ui.column().classes('gap-4').style('flex: 1.4 1 0'):
 
                 with ui.card().classes('w-full p-4'):
                     prefix_in = ui.input('Output filename prefix', value='montage').classes('w-full')
@@ -824,10 +988,14 @@ def index():
                     ui.label('Text').classes('text-xs text-gray-400')
                     with ui.row().classes('w-full gap-4'):
                         title_in = ui.input('Title', value='').classes('flex-1')
-                        font_in = ui.input('Font name', value='').classes('flex-1')
+                        font_in = ui.select([''] + _FONTS, label='Font name', value='',
+                                           with_input=True, new_value_mode='add-unique').classes('flex-1')
+                    with ui.row().classes('w-full items-center gap-3 mt-1'):
+                        text_color_in = ui.color_input(label='Text color', value='#000000').classes('flex-1')
+                        title_size_in = ui.number('Title size', value=24, min=6, precision=0).classes('flex-1')
+                        fontsize_in   = ui.number('Label size', value=12, min=6, precision=0).classes('flex-1')
                     with ui.row().classes('w-full items-center gap-4 mt-1'):
                         labels_sw = ui.switch('Show filename labels')
-                        fontsize_in = ui.number('Label font size', value=12, min=6, precision=0).classes('flex-1')
 
                     ui.label('Effects').classes('text-xs text-gray-400 mt-3')
                     with ui.row().classes('w-full gap-4'):
@@ -860,6 +1028,8 @@ def index():
                     with ui.row().classes('w-full gap-2').bind_visibility_from(border_sw, 'value'):
                         border_w_in = ui.number('Width px', value=5, min=0, precision=0).classes('flex-1')
                         border_h_in = ui.number('Height px', value=5, min=0, precision=0).classes('flex-1')
+
+    refresh_image_list()
 
 
 _PORT = _load_port()

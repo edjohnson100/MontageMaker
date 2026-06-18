@@ -43,10 +43,15 @@ create_montages(grid_size, output_extension, tile_geometry, show_labels,
                 prefix, crop_dims, font_size, output_dir=None,
                 background_color='white', quality=None, title='', font_name='',
                 shadow=None, frame=None, mattecolor=None, border=None,
-                bordercolor=None, mode=None, polaroid=None)
+                bordercolor=None, mode=None, polaroid=None, image_files=None,
+                text_color=None, title_size=None)
 ```
 
 **Shadow + Polaroid conflict:** when `polaroid` is set, `shadow` is silently ignored by the engine (`-shadow` and `+polaroid` conflict — shadow flattens the layer before polaroid rotation is composited). The UI disables the shadow switch when polaroid is active.
+
+**Two-pass title rendering:** `create_montages` runs `montage` without `-title` (pass 1), then calls `magick` to splice a title banner and annotate it onto each output page (pass 2). This gives the title independent font size (`title_size`) and color (`text_color`) from the labels. Use `magick`, not `convert`, for the second pass — on Windows IM7, `convert.exe` is shadowed by the system binary.
+
+**`image_files` parameter:** if provided, `get_all_images()` is skipped and the supplied list is used directly. The GUI passes the checked subset from the image-selection panel. CLI never passes this; behaviour is unchanged.
 
 ### `app.py` structure
 
@@ -60,10 +65,14 @@ create_montages(grid_size, output_extension, tile_geometry, show_labels,
 - `_parse_grid(s)` / `_assemble_grid(c, r)` — convert `'2x3'` ↔ `(cols, rows)`
 - `_parse_size(s)` / `_assemble_size(w, h, hb, vb)` — convert `'500x500+10+10'` ↔ 4 integers
 - `_next_prefix(out_dir, prefix, ext)` — finds next unused `_v2`, `_v3`… variant
-- `_open_folder(path)` — opens folder in OS file explorer (`os.startfile` / `open`)
+- `_win32_open_raised(path)` / `_open_folder(path)` — opens folder in OS file explorer; Windows version runs in a daemon thread, uses `os.startfile` + `keybd_event` trick + `SetForegroundWindow` to bring Explorer to the foreground (pywebview holds the foreground lock, so `AllowSetForegroundWindow` alone is insufficient)
+- `_ensure_default_config()` — writes default `config.ini` from `_DEFAULT_PRESETS` if the file doesn't exist (called at module level; enables standalone exe first-run)
+- `_load_imagemagick_fonts()` — runs `magick -list font` (or `convert -list font`) and returns a sorted list of font names; stored in module-level `_FONTS`
+- `refresh_image_list()` / `_update_count()` / `select_all()` / `select_none()` — image selection panel helpers inside `index()`
 
 **`index()` page function (single `@ui.page('/')`):**
-- 3-column layout: left (40%) = folders + Generate button + image results; middle (flex) = preset selector + settings card (grid, tile, background, output); right (flex) = filename prefix, text, effects
+- 3-column layout: left (~40%) = folders + image-selection panel + Generate button + output previews; middle (~25%) = preset selector + settings card (grid, tile, background, output); right (~35%) = filename prefix, text, effects
+- Column flex ratios: `1.6 1 0` / `1.1` / `1.4 1 0` (no hard `max-w` cap — columns scale with window width)
 - Header row: app title left; right side has Theme dropdown + Port button
 - Theme applied at page load via `ui.dark_mode()` and `ui.colors()`; `apply_theme()` updates both live when dropdown changes
 - `apply_preset(e)` — always sets ALL fields via `.get(key, default)`; never uses `if key in pc` (prevents stale values when switching presets)
@@ -96,6 +105,8 @@ create_montages(grid_size, output_extension, tile_geometry, show_labels,
 | `border` | `5x5` | Flat border geometry |
 | `bordercolor` | `#000000` | Border color |
 | `polaroid` | `random` or angle int | Polaroid effect |
+| `textcolor` | `#ffffff` | Text fill color (title + labels); empty = IM default (black) |
+| `titlesize` | `24` | Title-specific font size; label size uses `fontsize` |
 
 Sections are written alphabetically (casefold) on every GUI save.
 
@@ -120,3 +131,9 @@ theme = Dark
 - **ConfigParser DEFAULT inheritance** — `dict(config[section])` includes DEFAULT keys; `_preset_values()` filters them via `inherited = set(config.defaults())`
 - **Image preview on overwrite** — NiceGUI assigns deterministic URLs to local files; same filename = WebView cache hit. All output images are served through `GET /output-image?p=...&t={timestamp}` to force a fresh fetch. Do not revert to `ui.image(path)` for output previews.
 - **Shadow + Polaroid** — `-shadow` and `+polaroid` conflict in ImageMagick montage; shadow is skipped in the engine when polaroid is active, and the UI disables the shadow switch via `bind_enabled_from`
+- **Title rendering is two-pass** — `montage` does not honour `-pointsize`/`-fill` placed before `-title` reliably; instead, pass 1 runs `montage` without a title, pass 2 runs `magick` to splice and annotate the title independently. Never revert to putting `-title` in the `montage` command.
+- **`magick` not `convert` for pass 2** — on Windows IM7, `convert.exe` in System32 shadows ImageMagick's `convert`. Use `magick` as the executable for all non-`montage` IM calls.
+- **`SCRIPT_DIR` in frozen exe** — `Path(__file__).parent` resolves to the temp extraction dir in a PyInstaller onefile bundle. Use `Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent`. `config.ini` and `session.ini` must both use `SCRIPT_DIR`.
+- **`nicegui-pack` broken on Windows** — the subprocess spawned by `nicegui-pack` can't find `pyinstaller` because the venv Scripts dir isn't on the subprocess PATH. Use `build.py` instead, which calls `venv_win\Scripts\pyinstaller` directly.
+- **Font dropdown uses `ui.select` with `with_input=True`** — not `ui.input` with `autocomplete`. `_FONTS` is populated at module load from `magick -list font`. Font names must be passed verbatim to ImageMagick's `-font`; the select uses `new_value_mode='add-unique'` to allow arbitrary values.
+- **Image selection checkbox loop closure** — the `make_handler(name)` factory inside `refresh_image_list()` is required; a plain `lambda e: ...` capturing `fname` in a loop would close over the last value.

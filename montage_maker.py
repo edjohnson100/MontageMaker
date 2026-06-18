@@ -48,7 +48,8 @@ def get_all_images():
 def create_montages(grid_size, output_extension, tile_geometry, show_labels, prefix, crop_dims, font_size,
                     output_dir=None, background_color='white', quality=None, title='', font_name='',
                     shadow=None, frame=None, mattecolor=None, border=None, bordercolor=None,
-                    mode=None, polaroid=None):
+                    mode=None, polaroid=None, image_files=None,
+                    text_color=None, title_size=None):
     # 1. Parse the grid size
     try:
         if not grid_size:
@@ -59,8 +60,9 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
         logging.error("Grid must be in format COLxROW (e.g., 2x2, 3x4)")
         return
 
-    # 2. Find all images
-    image_files = get_all_images()
+    # 2. Find all images (caller may supply a pre-filtered list)
+    if image_files is None:
+        image_files = get_all_images()
     
     if not image_files:
         logging.error("No valid image files found in the current directory.")
@@ -85,10 +87,9 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
         output_filename = os.path.join(output_dir, base_name) if output_dir else base_name
         
         # 4. Construct Command
+        # Pass 1: tile layout (no -title; -fill and -pointsize placed last so IM honours them)
         cmd = ["montage"]
 
-        if title:
-            cmd.extend(["-title", title])
         if font_name:
             cmd.extend(["-font", font_name])
         if mode:
@@ -117,6 +118,7 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
         if crop_dims:
             cmd.extend(["-gravity", "center", "-crop", f"{crop_dims}+0+0"])
 
+        # Global text settings placed after geometry so they are the final values IM reads
         cmd.extend([
             "-tile", grid_size,
             "-geometry", tile_geometry,
@@ -124,13 +126,13 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
             "-background", background_color or "white",
             "-pointsize", str(font_size),
         ])
-
+        if text_color:
+            cmd.extend(["-fill", text_color])
         if quality is not None:
             cmd.extend(["-quality", str(quality)])
-
         cmd.append(output_filename)
-        
-        # 5. Run
+
+        # 5. Run pass 1
         try:
             logging.info(f"Processing Page {i+1} -> {output_filename}")
             logging.debug(f"Command: {' '.join(cmd)}")
@@ -140,9 +142,40 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
         except subprocess.CalledProcessError as e:
             stderr_msg = e.stderr.strip() if e.stderr else '(no output)'
             logging.error(f"Error processing page {i+1}: {stderr_msg}")
+            continue
         except FileNotFoundError:
             logging.critical("Error: 'montage' command not found. Is ImageMagick installed?")
             return
+
+        # Pass 2: splice title banner via convert (gives independent size + color from labels)
+        if title:
+            ts  = int(title_size or font_size)
+            bg  = background_color or "white"
+            title_h = ts * 2          # vertical space added at top
+            pad     = max(ts // 4, 4) # gap between top edge and text baseline
+            conv_cmd = [
+                "magick",
+                output_filename,
+                "-gravity", "North",
+                "-background", bg,
+                "-splice", f"0x{title_h}",
+            ]
+            if font_name:
+                conv_cmd.extend(["-font", font_name])
+            conv_cmd.extend(["-pointsize", str(ts)])
+            conv_cmd.extend(["-fill", text_color or "black"])
+            if quality is not None:
+                conv_cmd.extend(["-quality", str(quality)])
+            conv_cmd.extend(["-annotate", f"+0+{pad}", title, output_filename])
+            try:
+                logging.debug(f"Title command: {' '.join(conv_cmd)}")
+                r2 = subprocess.run(conv_cmd, check=True, stderr=subprocess.PIPE, text=True)
+                if r2.stderr:
+                    logging.warning(f"Title warnings: {r2.stderr.strip()}")
+            except subprocess.CalledProcessError as e:
+                logging.error(f"Failed to render title: {e.stderr.strip()}")
+            except FileNotFoundError:
+                logging.error("'convert' not found — title not rendered. Ensure ImageMagick is on PATH.")
 
     logging.info("Done! All montages created.")
 

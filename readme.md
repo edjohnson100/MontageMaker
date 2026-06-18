@@ -72,13 +72,17 @@ python montage_maker.py 2x2 --size "500x500+5+5" --label --fontsize 24
 
 ## GUI Overview
 
-The app uses a three-column layout:
+The app uses a three-column layout that scales with window width:
 
 | Column | Contents |
 |---|---|
-| Left (40%) | Image folder, Output folder, Generate button, output previews |
-| Middle (30%) | Preset selector · Grid · Tile size & spacing · Background · Output (crop/format) |
-| Right (30%) | Output filename prefix · Text · Effects |
+| Left (~40%) | Image folder · Output folder · **Input Image Files** selection panel · Generate button · Output previews |
+| Middle (~25%) | Preset selector · Grid · Tile size & spacing · Background · Output (crop/format) |
+| Right (~35%) | Output filename prefix · Text · Effects |
+
+### Input Image Files panel
+
+A collapsible panel above the Generate button lists every image in the selected folder with a checkbox and thumbnail preview. Check/uncheck individual images to control which ones are included in the next run. The count (e.g. "9 of 12 selected") is always visible even when the panel is collapsed. **All** / **None** buttons select or deselect everything at once. The list refreshes automatically when the input folder changes.
 
 ### Header
 Two controls sit in the top-right corner:
@@ -119,10 +123,14 @@ Base name for generated files. Pages are numbered automatically: `prefix_01.png`
 ### Text
 | Field | Description |
 |---|---|
-| Title | Text banner printed above the entire montage (`-title`) |
-| Font name | ImageMagick font name for labels and title (e.g. `Arial`, `Helvetica`) |
+| Title | Text banner printed above the entire montage (rendered independently from labels via a second ImageMagick pass) |
+| Font name | Font for all text — searchable dropdown populated from ImageMagick's font list |
+| Text color | Fill color for both title and label text (default black) |
+| Title size | Point size for the title banner |
+| Label size | Point size for filename labels |
 | Show filename labels | Adds the source filename below each tile |
-| Label font size | Point size for filename labels |
+
+> Title and labels are rendered in separate ImageMagick passes, so Title size and Label size are fully independent.
 
 ### Effects
 
@@ -152,7 +160,7 @@ Presets are stored in `config.ini` in the same directory as the script, sorted a
 | Preset | Grid | Notes |
 |---|---|---|
 | Contact Sheet | 4×4 | 300px tiles, labeled, cropped square |
-| Filmstrip | 4×1 | 480px tiles, Concatenate mode, black background |
+| Filmstrip | 4×1 | 480px tiles, Concatenate mode, black background, 12×30px black border (film-proportioned frame lines), white title |
 | Gallery Wall | 2×2 | 500px tiles, beveled frame, drop shadow, warm background |
 | Instagram Post | 2×2 | Cropped to 1080×1080, JPG |
 | Instagram Story | 1×1 | Cropped to 1080×1920, JPG |
@@ -202,6 +210,8 @@ The dialog shows the total file count and the exact prefix that Overwrite will t
 | `border` | `WxH` | `5x5` | Flat border width/height |
 | `bordercolor` | color | `#000000` | Border color |
 | `polaroid` | `random` or angle | `random` | Polaroid effect; `random` = ±15°, or a fixed angle |
+| `textcolor` | color | `#ffffff` | Text fill color for title and labels; empty = ImageMagick default (black) |
+| `titlesize` | integer | `24` | Title-specific point size (independent of `fontsize`) |
 
 ---
 
@@ -247,11 +257,16 @@ The CLI scans the **current working directory** for images. Images are sorted al
 ## Building a Standalone Executable
 
 ```bash
-venv_win\Scripts\pip install "nicegui[pyinstaller]"
-nicegui-pack --onefile --name Montage_Maker app.py
+# Windows
+venv_win\Scripts\python build.py
+
+# macOS
+venv_mac/bin/python build.py
 ```
 
-The resulting `Montage_Maker.exe` (Windows) requires no Python installation but still needs ImageMagick on PATH.
+`build.py` installs PyInstaller into the venv if needed, locates the NiceGUI package, and runs PyInstaller with the correct flags. The resulting `dist/Montage_Maker.exe` (Windows) or `dist/Montage_Maker` (macOS) requires no Python installation but still needs ImageMagick on PATH.
+
+> `nicegui-pack` does **not** work on Windows — its subprocess cannot find `pyinstaller` in the venv. Always use `build.py`.
 
 ---
 
