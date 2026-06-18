@@ -34,6 +34,18 @@ Desktop.ini
 # Ignore the folder where Inno Setup puts the compiled EXE
 Output/
 
+# Virtual environments created by setup.py
+venv_win/
+venv_mac/
+
+# Local session state (last-used folder paths)
+session.ini
+
+# PyInstaller build artifacts
+dist/
+build/
+*.spec
+
 # ----------------------
 # 5. Security & Local Settings
 # ----------------------

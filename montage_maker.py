@@ -45,7 +45,10 @@ def get_all_images():
     
     return sorted(files)
 
-def create_montages(grid_size, output_extension, tile_geometry, show_labels, prefix, crop_dims, font_size):
+def create_montages(grid_size, output_extension, tile_geometry, show_labels, prefix, crop_dims, font_size,
+                    output_dir=None, background_color='white', quality=None, title='', font_name='',
+                    shadow=None, frame=None, mattecolor=None, border=None, bordercolor=None,
+                    mode=None, polaroid=None):
     # 1. Parse the grid size
     try:
         if not grid_size:
@@ -69,41 +72,74 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
     logging.info(f"Found {total_images} images. Creating {total_pages} montage pages...")
     logging.info(f"Settings: Grid={grid_size}, Ext={output_extension}, Size={tile_geometry}, Labels={show_labels}, Font={font_size}")
 
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
     # 3. Loop through the images
     for i in range(total_pages):
         start_idx = i * images_per_page
         end_idx = start_idx + images_per_page
         batch_files = image_files[start_idx:end_idx]
-        
-        output_filename = f"{prefix}_{i+1:02d}.{output_extension}"
+
+        base_name = f"{prefix}_{i+1:02d}.{output_extension}"
+        output_filename = os.path.join(output_dir, base_name) if output_dir else base_name
         
         # 4. Construct Command
         cmd = ["montage"]
-        
+
+        if title:
+            cmd.extend(["-title", title])
+        if font_name:
+            cmd.extend(["-font", font_name])
+        if mode:
+            cmd.extend(["-mode", mode])
+        if mattecolor:
+            cmd.extend(["-mattecolor", mattecolor])
+        if bordercolor:
+            cmd.extend(["-bordercolor", bordercolor])
+        if shadow and not polaroid:
+            # -shadow and +polaroid conflict: shadow flattens before polaroid rotation is composited.
+            # +polaroid already bakes in its own shadow, so skip -shadow when polaroid is active.
+            cmd.append("-shadow")
+        if frame:
+            cmd.extend(["-frame", frame])
+        if border:
+            cmd.extend(["-border", border])
         if show_labels:
             cmd.extend(["-label", "%f"])
-            
+        if polaroid == 'random':
+            cmd.append("+polaroid")
+        elif polaroid is not None:
+            cmd.extend(["-polaroid", str(polaroid)])
+
         cmd.extend(batch_files)
 
         if crop_dims:
             cmd.extend(["-gravity", "center", "-crop", f"{crop_dims}+0+0"])
 
         cmd.extend([
-            "-tile", grid_size,          
-            "-geometry", tile_geometry, 
-            "-gravity", "center",        
-            "-background", "white",      
-            "-pointsize", str(font_size), # Use the dynamic font size
-            output_filename
+            "-tile", grid_size,
+            "-geometry", tile_geometry,
+            "-gravity", "center",
+            "-background", background_color or "white",
+            "-pointsize", str(font_size),
         ])
+
+        if quality is not None:
+            cmd.extend(["-quality", str(quality)])
+
+        cmd.append(output_filename)
         
         # 5. Run
         try:
             logging.info(f"Processing Page {i+1} -> {output_filename}")
             logging.debug(f"Command: {' '.join(cmd)}")
-            subprocess.run(cmd, check=True)
+            result = subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True)
+            if result.stderr:
+                logging.warning(f"Page {i+1} warnings: {result.stderr.strip()}")
         except subprocess.CalledProcessError as e:
-            logging.error(f"Error processing page {i+1}: {e}")
+            stderr_msg = e.stderr.strip() if e.stderr else '(no output)'
+            logging.error(f"Error processing page {i+1}: {stderr_msg}")
         except FileNotFoundError:
             logging.critical("Error: 'montage' command not found. Is ImageMagick installed?")
             return
