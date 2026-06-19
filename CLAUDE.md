@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repo Structure & Key Files
+
+| File | Role |
+|---|---|
+| `app.py` | NiceGUI GUI — primary entry point |
+| `montage_maker.py` | Core engine — `create_montages()` + CLI `__main__` |
+| `build.py` | Cross-platform PyInstaller build script |
+| `setup.py` | Bootstrap — creates venv, installs dependencies |
+| `config.ini` | 11 bundled presets |
+| `requirements.txt` | `nicegui`, `pywebview` |
+| `README.md` | GitHub-facing readme (practical, standalone-first) |
+| `Montage_Maker_User_Guide.pdf` | End-user guide (PDF) |
+| `LICENSE` | MIT license (source code only) |
+| `ASSET_AND_BRANDING_LICENSE.md` | Covers logo, Lucy artwork, docs, screenshots, branding |
+| `THIRD_PARTY_NOTICES.md` | Third-party tool/library notices |
+| `PYTHON_DEPENDENCY_LICENSES.md` | Generated pip-licenses report for Python deps |
+| `resources/` | App icon + hero images |
+| `Archive/` | **Gitignored, local only.** Old dev notes, scratchpads, draft docs. Not public content. |
+
+**Dev notes and next-chat handoff files** (`!Dev_Notes.md`, `!Next_Chat.md`) were moved to `Archive/` and are no longer in the tracked repo. Use memory files and CLAUDE.md for session context instead.
+
 ## Running the App
 
 **GUI (primary):**

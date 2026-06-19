@@ -1,5 +1,18 @@
-#!/usr/bin/env python3
-"""Cross-platform build script — produces a standalone Montage_Maker executable via PyInstaller."""
+"""
+===============================================================================
+Project:     Montage Maker
+Script:      build.py
+Author:      Ed Johnson
+Description: Cross-platform build script — 
+            produces a standalone Montage_Maker executable via PyInstaller.
+Last Update: 2026-06-18
+Version:     1.0.0
+License:     MIT License for source code.
+             Project artwork, branding, documentation, and promotional assets
+             are licensed separately. See LICENSE,
+             ASSET_AND_BRANDING_LICENSE.md, and THIRD_PARTY_NOTICES.md.
+===============================================================================
+"""
 
 import platform
 import subprocess

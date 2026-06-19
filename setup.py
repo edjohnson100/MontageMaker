@@ -1,15 +1,25 @@
-#!/usr/bin/env python3
 """
-Montage Maker bootstrap script.
+===============================================================================
+Project:     Montage Maker
+Script:      setup.py
+Author:      Ed Johnson
+Description: Montage Maker bootstrap script.
+                Run with the system Python (not inside a venv) to:
+                1. Check and install ImageMagick and Ghostscript
+                2. Create a virtual environment (venv_win or venv_mac)
+                3. Install Python dependencies from requirements.txt
 
-Run with the system Python (not inside a venv) to:
-  1. Check and install ImageMagick and Ghostscript
-  2. Create a virtual environment (venv_win or venv_mac)
-  3. Install Python dependencies from requirements.txt
+                Usage:
+                    Windows:  python setup.py
+                    macOS:    python3 setup.py
 
-Usage:
-    Windows:  python setup.py
-    macOS:    python3 setup.py
+Last Update: 2026-06-18
+Version:     1.0.0
+License:     MIT License for source code.
+             Project artwork, branding, documentation, and promotional assets
+             are licensed separately. See LICENSE,
+             ASSET_AND_BRANDING_LICENSE.md, and THIRD_PARTY_NOTICES.md.
+===============================================================================
 """
 
 import shutil

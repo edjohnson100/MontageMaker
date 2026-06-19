@@ -1,3 +1,19 @@
+"""
+===============================================================================
+Project:     Montage Maker
+Script:      app.py
+Author:      Ed Johnson
+Description: NiceGUI desktop interface for selecting image folders, configuring
+             montage presets, choosing layout options, and generating image
+             grids through the Montage Maker processing engine.
+Last Update: 2026-06-18
+Version:     1.0.0
+License:     MIT License for source code.
+             Project artwork, branding, documentation, and promotional assets
+             are licensed separately. See LICENSE,
+             ASSET_AND_BRANDING_LICENSE.md, and THIRD_PARTY_NOTICES.md.
+===============================================================================
+"""
 import asyncio
 import os
 import re

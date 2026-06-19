@@ -21,7 +21,7 @@ ehthumbs.db
 Desktop.ini
 
 # ----------------------
-# 3. Autodesk Fusion 360 Specifics
+# 3. Autodesk Fusion Specifics
 # ----------------------
 # Fusion creates these backup files when you edit a manifest in the UI
 *.manifest.bak
@@ -71,3 +71,6 @@ Installers/Output/
 *.pkg
 *.dmg
 *.zip
+
+# Ignore Archive folder
+Archive/

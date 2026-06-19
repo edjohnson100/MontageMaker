@@ -1,40 +1,100 @@
 # Montage Maker
 
-A desktop GUI and CLI tool for batch-creating image grid montages using ImageMagick. Point it at a folder of images, dial in your settings, and generate one or more tiled output pages.
+**Turn Image Sets Into Showpieces**
+
+Montage Maker is a desktop GUI and CLI tool for turning folders of images into polished grids, contact sheets, social-ready posts, documentation images, reference sheets, and artful montages. Point it at a folder of images, choose a preset or customize the layout, and generate one or more finished image files.
+
+It is useful for AI image batches, design variations, project photos, product mockups, 3D printing documentation, tutorial assets, and any visual collection that deserves to look organized instead of scattered.
 
 ![Montage Maker](resources/MontageMakerIcon.png)
 
 ---
 
-## Prerequisites
+## Quick Start
 
-Montage Maker requires **ImageMagick** to be installed and the `montage` command to be on your PATH.
+For most users, the standalone app is the easiest way to run Montage Maker. You do **not** need to install Python when using the standalone executable.
 
-### Windows 10 / 11
-1. Download the latest installer from [imagemagick.org/script/download.php](https://imagemagick.org/script/download.php#windows) (choose the **DLL** build, 64-bit).
-2. Run the installer. Check **"Add application directory to your system path"**.
+1. Install **ImageMagick** and make sure the `montage` command is available on your PATH.
+2. Launch Montage Maker:
+   - **Windows:** double-click `Montage_Maker.exe`
+   - **macOS:** double-click `Montage_Maker`
+   - **Python/source version:** run `app.py` from the virtual environment
+3. Choose an **Image folder**.
+4. Choose an **Output folder**, or leave it blank and Montage Maker will create/use a `Montages` folder inside your image folder.
+5. Pick a preset, such as **Square 3×3**, or adjust the settings manually.
+6. Click **Generate Montage**.
 
-### macOS
-```bash
-brew install imagemagick
-```
-
-### Linux (Ubuntu / Debian)
-```bash
-sudo apt update && sudo apt install imagemagick
-```
-
-### Verify
-```bash
-montage -version
-```
-You should see a version line like `Version: ImageMagick 7.x.x ...`. If not, restart your terminal and check your PATH.
+Your montage file(s) appear in the output folder, with a preview shown inside the app.
 
 ---
 
-## Setup
+## Full User Guide
 
-Run the bootstrap script once with your **system Python** (not inside a venv). It installs ImageMagick if missing, creates a virtual environment, and installs Python dependencies.
+For the friendly walkthrough with screenshots, examples, presets, and troubleshooting, see:
+
+[Montage Maker User Guide](Montage_Maker_User_Guide.pdf)
+
+---
+
+## Requirements
+
+Montage Maker uses **ImageMagick** under the hood to build the final montage images. Whether you use the standalone app or run from Python source, ImageMagick must be installed separately and available on your system PATH.
+
+### Windows 10 / 11
+
+1. Download the latest installer from [imagemagick.org/script/download.php](https://imagemagick.org/script/download.php#windows).
+2. Choose the **64-bit DLL** build.
+3. Run the installer.
+4. Check **Add application directory to your system path**.
+5. Open a new terminal and verify the install:
+
+```bash
+montage -version
+```
+
+### macOS
+
+```bash
+brew install imagemagick
+montage -version
+```
+
+### Linux (Ubuntu / Debian)
+
+```bash
+sudo apt update && sudo apt install imagemagick
+montage -version
+```
+
+If `montage -version` does not return a version number, restart your terminal and check your PATH.
+
+---
+
+## Recommended: Use the Standalone App
+
+### Windows
+
+1. Install ImageMagick using the instructions above.
+2. Put `Montage_Maker.exe` somewhere convenient, such as a project folder or local tools folder.
+3. Double-click `Montage_Maker.exe`.
+4. If Windows asks for permission to run the app, approve it if you trust the source.
+
+### macOS
+
+1. Install ImageMagick using the instructions above.
+2. Put `Montage_Maker` somewhere convenient, such as your Applications folder or a project folder.
+3. Double-click `Montage_Maker`.
+4. If macOS blocks the app because it came from outside the App Store, use the normal macOS security workflow to allow it.
+
+> The standalone app includes the Python application code, but it does not include ImageMagick. ImageMagick still has to be installed separately.
+
+---
+
+## Optional: Run from Python Source
+
+Use this route if you want to run the source code directly, customize the app, or contribute changes.
+
+Run the bootstrap script once with your **system Python**. Do not run it from inside an existing virtual environment.
 
 ```bash
 # Windows
@@ -44,13 +104,15 @@ python setup.py
 python3 setup.py
 ```
 
-The script creates `venv_win/` (Windows) or `venv_mac/` (macOS/Linux) and installs `nicegui` and `pywebview`.
+The script creates a platform-specific virtual environment:
 
----
+- Windows: `venv_win/`
+- macOS/Linux: `venv_mac/`
 
-## Running the App
+It then installs the Python dependencies needed by the GUI.
 
-### GUI (primary)
+Launch the app with:
+
 ```bash
 # Windows
 venv_win\Scripts\python app.py
@@ -59,202 +121,15 @@ venv_win\Scripts\python app.py
 venv_mac/bin/python app.py
 ```
 
-A native desktop window opens — no browser required.
-
-### CLI (original engine, still functional)
-```bash
-python montage_maker.py 2x2
-python montage_maker.py --preset "Instagram Post"
-python montage_maker.py 2x2 --size "500x500+5+5" --label --fontsize 24
-```
+A native desktop window opens. No browser is required.
 
 ---
 
-## GUI Overview
+## Optional: Build Your Own Standalone Executable
 
-The app uses a three-column layout that scales with window width:
+Most users do not need this. Use this only if you want to package your own standalone copy of Montage Maker.
 
-| Column | Contents |
-|---|---|
-| Left (~40%) | Image folder · Output folder · **Input Image Files** selection panel · Generate button · Output previews |
-| Middle (~25%) | Preset selector · Grid · Tile size & spacing · Background · Output (crop/format) |
-| Right (~35%) | Output filename prefix · Text · Effects |
-
-### Input Image Files panel
-
-A collapsible panel above the Generate button lists every image in the selected folder with a checkbox and thumbnail preview. Check/uncheck individual images to control which ones are included in the next run. The count (e.g. "9 of 12 selected") is always visible even when the panel is collapsed. **All** / **None** buttons select or deselect everything at once. The list refreshes automatically when the input folder changes.
-
-### Header
-Two controls sit in the top-right corner:
-- **Theme** dropdown — switch between four themes: **Light**, **Warm** (light modes) or **Dark**, **Midnight** (dark modes). Saved to `session.ini` and restored on next launch.
-- **Port: 8000** button — opens a dialog to change the server port. Takes effect after restarting the app. Persisted in `session.ini`.
-
----
-
-## Settings Reference
-
-### Grid
-| Field | Description |
-|---|---|
-| Columns | Number of tiles per row |
-| Rows | Number of rows per page. Pages are created automatically when images exceed one grid. |
-
-### Tile size & spacing
-| Field | Format | Description |
-|---|---|---|
-| Width / Height | pixels | Size of each individual tile |
-| H spacing / V spacing | pixels | Gap between tiles (ImageMagick `-geometry` border) |
-
-### Background
-| Field | Description |
-|---|---|
-| Color | Background fill color behind tiles (hex or named color) |
-| Transparent | Passes `-background none`. Output format is automatically forced to PNG. |
-
-### Output
-| Field | Description |
-|---|---|
-| Crop | Center-crops source images to `WxH` before tiling (e.g. `1080x1080`) |
-| Format | Output file extension: `png`, `jpg`, `bmp`, `tiff` |
-
-### Output filename prefix
-Base name for generated files. Pages are numbered automatically: `prefix_01.png`, `prefix_02.png`, etc.
-
-### Text
-| Field | Description |
-|---|---|
-| Title | Text banner printed above the entire montage (rendered independently from labels via a second ImageMagick pass) |
-| Font name | Font for all text — searchable dropdown populated from ImageMagick's font list |
-| Text color | Fill color for both title and label text (default black) |
-| Title size | Point size for the title banner |
-| Label size | Point size for filename labels |
-| Show filename labels | Adds the source filename below each tile |
-
-> Title and labels are rendered in separate ImageMagick passes, so Title size and Label size are fully independent.
-
-### Effects
-
-| Control | Description |
-|---|---|
-| **Mode** | `Frame` — ornamental 3D border around tiles. `Concatenate` — zero spacing, tiles touch. |
-| **Quality (JPG)** | JPEG compression quality 0–100 (default 85). Has no effect on PNG. |
-| **Drop shadow** | Adds a drop shadow behind each tile. Automatically disabled while Polaroid is active (they conflict; `+polaroid` bakes in its own shadow). |
-| **Polaroid** | Applies a Polaroid-style effect. Set a fixed angle or enable **Random (±15°)** for variety. |
-| **Frame** | Draws a beveled ornamental frame around each tile. Controls: Width, Height, Outer bevel, Inner bevel. Set **Matte color** for the frame color. Pairs naturally with Mode = Frame. |
-| **Border** | Adds a flat solid border around each tile. Controls: Width, Height. Set **Border color**. |
-
----
-
-## Preset Manager
-
-Click **Manage…** next to the Preset selector to open the preset manager. You can:
-- **Load** an existing preset to edit it
-- **Save** under any name (spaces and proper case allowed; `]` and newlines are not)
-- **Delete** a preset
-- **Clear** the form to start fresh
-
-Presets are stored in `config.ini` in the same directory as the script, sorted alphabetically.
-
-### Bundled presets
-
-| Preset | Grid | Notes |
-|---|---|---|
-| Contact Sheet | 4×4 | 300px tiles, labeled, cropped square |
-| Filmstrip | 4×1 | 480px tiles, Concatenate mode, black background, 12×30px black border (film-proportioned frame lines), white title |
-| Gallery Wall | 2×2 | 500px tiles, beveled frame, drop shadow, warm background |
-| Instagram Post | 2×2 | Cropped to 1080×1080, JPG |
-| Instagram Story | 1×1 | Cropped to 1080×1920, JPG |
-| Link Preview | 2×2 | Cropped to 1200×630, JPG — universal OG image format |
-| Pinterest Pin | 2×3 | Cropped to 1000×1500, JPG |
-| Polaroid | 3×2 | Polaroid effect, random angle, dark background, drop shadow |
-| Square 3×3 | 3×3 | 720px tiles, PNG |
-| X Post | 2×2 | Cropped to 1200×675, JPG |
-| YouTube Thumb | 2×2 | Cropped to 1280×720 |
-
----
-
-## File Conflict Dialog
-
-When output files already exist, a dialog appears with three options:
-
-| Option | Behavior |
-|---|---|
-| **Cancel** | Abort — nothing is written |
-| **Auto-increment** | Appends `_v2`, `_v3`, etc. to the prefix to create a new set alongside the existing ones |
-| **Overwrite** | Replaces the **most recent version** of the output files only (e.g. `montage_v3_*.png`), leaving earlier versions untouched |
-
-The dialog shows the total file count and the exact prefix that Overwrite will target.
-
----
-
-## config.ini Key Reference
-
-| Key | Format | Example | Notes |
-|---|---|---|---|
-| `grid` | `CxR` | `2x3` | Columns × rows |
-| `size` | `WxH+HB+VB` | `500x500+10+10` | Tile size + spacing |
-| `background` | color | `#ffffff` | Hex or ImageMagick color name |
-| `transparent` | `on`/`off` | `on` | Forces background to `none`; output must be PNG |
-| `crop` | `WxH` | `1080x1080` | Center-crop applied before tiling |
-| `ext` | extension | `png` | Output format |
-| `prefix` | string | `montage` | Output filename prefix |
-| `fontsize` | integer | `12` | Label point size |
-| `labels` | `on`/`off` | `on` | Show filename labels |
-| `title` | string | `My Trip` | Title banner above montage |
-| `font` | string | `Arial` | Font name for labels/title |
-| `quality` | `0`–`100` | `85` | JPEG quality |
-| `mode` | type | `Frame` | `Frame` or `Concatenate` |
-| `shadow` | `on`/`off` | `on` | Drop shadow behind tiles |
-| `frame` | `WxH+outer+inner` | `6x6+3+3` | Frame geometry (bevel sizes) |
-| `mattecolor` | color | `#808080` | Frame color |
-| `border` | `WxH` | `5x5` | Flat border width/height |
-| `bordercolor` | color | `#000000` | Border color |
-| `polaroid` | `random` or angle | `random` | Polaroid effect; `random` = ±15°, or a fixed angle |
-| `textcolor` | color | `#ffffff` | Text fill color for title and labels; empty = ImageMagick default (black) |
-| `titlesize` | integer | `24` | Title-specific point size (independent of `fontsize`) |
-
----
-
-## session.ini
-
-Auto-created in the project directory (gitignored). Persists three things across sessions:
-
-```ini
-[paths]
-input = /path/to/last/used/image/folder
-output = /path/to/last/used/output/folder
-
-[server]
-port = 8000
-
-[ui]
-theme = Dark
-```
-
----
-
-## CLI Reference
-
-```bash
-python montage_maker.py [GRID] [OPTIONS]
-```
-
-| Argument | Default | Description |
-|---|---|---|
-| `GRID` | `2x2` | Grid layout (e.g. `3x4`). Optional if `--preset` is used. |
-| `--preset NAME` | — | Load settings from a `config.ini` section |
-| `--ext EXT` | `png` | Output format |
-| `--size WxH+HB+VB` | `500x500+10+10` | Tile geometry |
-| `--label` | off | Force filename labels on |
-| `--fontsize N` | `12` | Label font size |
-| `--prefix NAME` | `montage` | Output filename prefix |
-| `--crop WxH` | — | Center-crop before tiling |
-
-The CLI scans the **current working directory** for images. Images are sorted alphabetically and paged automatically. Output goes to the current directory. A `process.log` is written to the same location.
-
----
-
-## Building a Standalone Executable
+Run `setup.py` first so the virtual environment exists, then run:
 
 ```bash
 # Windows
@@ -264,22 +139,199 @@ venv_win\Scripts\python build.py
 venv_mac/bin/python build.py
 ```
 
-`build.py` installs PyInstaller into the venv if needed, locates the NiceGUI package, and runs PyInstaller with the correct flags. The resulting `dist/Montage_Maker.exe` (Windows) or `dist/Montage_Maker` (macOS) requires no Python installation but still needs ImageMagick on PATH.
+`build.py` installs PyInstaller into the virtual environment if needed, locates the NiceGUI package, and runs PyInstaller with the correct flags.
 
-> `nicegui-pack` does **not** work on Windows — its subprocess cannot find `pyinstaller` in the venv. Always use `build.py`.
+The finished executable will be created in `dist/`:
+
+- Windows: `dist/Montage_Maker.exe`
+- macOS: `dist/Montage_Maker`
+
+The executable does not require a separate Python installation, but it still requires ImageMagick on PATH.
+
+> Note: Use `build.py` for packaging. Do not use `nicegui-pack` on Windows; it may fail because its subprocess cannot find `pyinstaller` in the virtual environment.
+
+---
+
+## GUI Overview
+
+The app uses a three-column layout that scales with the window width:
+
+| Column | Contents |
+|---|---|
+| Left (~40%) | Image folder, output folder, **Input Image Files** selection panel, Generate button, and output previews |
+| Middle (~25%) | Preset selector, grid controls, tile size and spacing, background, output crop/format |
+| Right (~35%) | Output filename prefix, text/title options, labels, and effects |
+
+### Input Image Files Panel
+
+The collapsible **Input Image Files** panel lists every supported image in the selected folder with a checkbox and thumbnail preview.
+
+Use it to:
+
+- include or exclude individual images
+- select all images
+- deselect all images
+- confirm how many images are selected before generating
+
+This is faster than moving files in and out of the folder when you want to test different image sets.
+
+### Header Controls
+
+The top-right header controls include:
+
+| Control | What it does |
+|---|---|
+| **Theme** | Switches between Light, Warm, Dark, and Midnight themes. Your choice is saved automatically. |
+| **Port: 8000** | Changes the local app port if another app is already using 8000. Takes effect after restarting Montage Maker. |
+
+---
+
+## Common Uses
+
+Montage Maker works well for:
+
+- AI image batch reviews
+- design variation comparisons
+- contact sheets
+- 3D printing project documentation
+- laser/CAD/tutorial images
+- product mockup sheets
+- social media posts
+- Pinterest pins
+- YouTube thumbnails
+- link preview images
+- gallery-style presentation pages
+
+---
+
+## Bundled Presets
+
+Montage Maker includes these built-in presets:
+
+| Preset | Grid | Notes |
+|---|---|---|
+| Contact Sheet | 4×4 | 300px tiles, labels on, cropped square |
+| Filmstrip | 4×1 | Concatenated tiles, black background, filmstrip-style borders |
+| Gallery Wall | 2×2 | Framed tiles, drop shadow, warm background |
+| Instagram Post | 2×2 | Cropped to 1080×1080, JPG |
+| Instagram Story | 1×1 | Cropped to 1080×1920, JPG |
+| Link Preview | 2×2 | Cropped to 1200×630, JPG |
+| Pinterest Pin | 2×3 | Cropped to 1000×1500, JPG |
+| Polaroid | 3×2 | Polaroid effect, random angle, dark background |
+| Square 3×3 | 3×3 | 720px tiles, PNG |
+| X Post | 2×2 | Cropped to 1200×675, JPG |
+| YouTube Thumb | 2×2 | Cropped to 1280×720, PNG |
+
+You can also save your own presets from the **Preset Manager**.
+
+---
+
+## Key Settings
+
+| Setting | What it controls |
+|---|---|
+| Grid | Columns and rows per output page |
+| Tile size & spacing | Pixel size of each tile and the gap between tiles |
+| Background | Solid background color or transparent PNG output |
+| Crop | Center-crops source images before tiling |
+| Format | Output file type: PNG, JPG, BMP, or TIFF |
+| Prefix | Base filename for generated output files |
+| Title | Text banner above the montage |
+| Labels | Optional source filename labels under each tile |
+| Effects | Drop shadow, Polaroid, frame, border, and concatenate modes |
+
+If the selected images exceed the grid capacity, Montage Maker automatically creates additional pages, such as `montage_01.png`, `montage_02.png`, and so on.
+
+---
+
+## File Conflict Handling
+
+If output files with the selected prefix already exist, Montage Maker shows a dialog before writing anything.
+
+| Option | Behavior |
+|---|---|
+| Cancel | Stops the run without writing files |
+| Auto-increment | Creates a new version using `_v2`, `_v3`, etc. |
+| Overwrite | Replaces the most recent matching version only |
+
+Auto-increment is the safest option while experimenting.
+
+---
+
+## CLI Reference
+
+The original command-line engine is still available in `montage_maker.py`.
+
+```bash
+python montage_maker.py [GRID] [OPTIONS]
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `GRID` | `2x2` | Grid layout, such as `3x4`. Optional if `--preset` is used. |
+| `--preset NAME` | — | Load settings from a named `config.ini` section |
+| `--ext EXT` | `png` | Output file format |
+| `--size WxH+HB+VB` | `500x500+10+10` | Tile size plus horizontal/vertical spacing |
+| `--label` | off | Show filename labels |
+| `--fontsize N` | `12` | Label font size |
+| `--prefix NAME` | `montage` | Output filename prefix |
+| `--crop WxH` | — | Center-crop each source image before tiling |
+
+Examples:
+
+```bash
+# Simple 2×2 grid with default settings
+python montage_maker.py 2x2
+
+# Use a saved preset
+python montage_maker.py --preset "Instagram Post"
+
+# Custom 2×2 with specific tile size, labels on, and larger font
+python montage_maker.py 2x2 --size "500x500+5+5" --label --fontsize 24
+```
+
+The CLI scans the **current working directory** for images. Output goes to the current directory, and a `process.log` file is written alongside the output files.
 
 ---
 
 ## Troubleshooting
 
-**`montage: command not found`**
-ImageMagick is not on your PATH. Reinstall with "Add to PATH" checked, then open a new terminal.
+### `montage: command not found`
 
-**Window fails to open (Windows)**
-The native window requires the Microsoft Edge WebView2 runtime. It is pre-installed on Windows 10/11; if missing, download it from [developer.microsoft.com/microsoft-edge/webview2](https://developer.microsoft.com/microsoft-edge/webview2/).
+ImageMagick is not installed, or the `montage` command is not on your PATH. Reinstall ImageMagick with **Add application directory to your system path** checked, then open a new terminal and try again.
 
-**"Connection lost" toast during generation**
-This should not occur in the current version (generation runs in a background thread). If it reappears, it indicates a very long ImageMagick operation blocking the event loop.
+### The app window fails to open on Windows
 
-**Port conflict on startup**
-Click **PORT: 8000** in the app header, enter a free port, save, and restart the app.
+The native window requires the Microsoft Edge WebView2 runtime. It is pre-installed on most Windows 10/11 systems. If it is missing, install it from Microsoft and try again.
+
+### A port conflict appears on startup
+
+Click **Port: 8000** in the app header, enter a free port number, save, and restart Montage Maker.
+
+### “Connection lost” appears during generation
+
+Generation runs in a background thread, so this should not normally appear. If it does, ImageMagick may be taking a long time with a large batch. Give it a moment and check the output folder when it finishes.
+
+---
+
+## Project Notes
+
+Montage Maker is built with:
+
+- [NiceGUI](https://nicegui.io/)
+- [ImageMagick](https://imagemagick.org/)
+- Python
+
+ImageMagick does the heavy lifting. Montage Maker provides the friendly desktop interface, presets, image selection, output preview, conflict handling, and workflow glue.
+
+---
+
+## License
+
+Montage Maker source code is licensed under the [MIT License](LICENSE) unless otherwise noted.
+
+Documentation, original project artwork, logos, screenshots, promotional graphics, the Montage Maker name, and Lucy-related branding are not included in the MIT source code license. See [Asset and Branding License](ASSET_AND_BRANDING_LICENSE.md) for details.
+
+Montage Maker uses or depends on third-party software and tools, including ImageMagick, NiceGUI, FastAPI, pywebview, PyInstaller, Python, and the Microsoft Edge WebView2 Runtime. Each third-party component remains under its own license or terms. See [Third-Party Notices](THIRD_PARTY_NOTICES.md) for details.
+
+The standalone executable includes the Montage Maker application code and Python dependencies, but ImageMagick must be installed separately and available on your system PATH.

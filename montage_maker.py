@@ -1,3 +1,19 @@
+"""
+===============================================================================
+Project:     Montage Maker
+Script:      montage_maker.py
+Author:      Ed Johnson
+Description: Core montage-generation engine. Uses ImageMagick to arrange source
+             images into tiled grids, contact sheets, social layouts, and
+             styled montage output files.
+Last Update: 2026-06-18
+Version:     1.0.0
+License:     MIT License for source code.
+             Project artwork, branding, documentation, and promotional assets
+             are licensed separately. See LICENSE,
+             ASSET_AND_BRANDING_LICENSE.md, and THIRD_PARTY_NOTICES.md.
+===============================================================================
+"""
 import os
 import subprocess
 import argparse
