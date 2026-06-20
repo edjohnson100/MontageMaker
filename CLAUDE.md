@@ -13,7 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `config.ini` | 11 bundled presets |
 | `requirements.txt` | `nicegui`, `pywebview` |
 | `README.md` | GitHub-facing readme (practical, standalone-first) |
-| `Montage_Maker_User_Guide.pdf` | End-user guide (PDF) |
+| `Montage_Maker_User_Guide.md` | End-user guide (Markdown source — also exported as PDF for distribution) |
+| `examples/` | Example output images referenced in the user guide (11 preset examples, not all populated yet) |
 | `LICENSE` | MIT license (source code only) |
 | `ASSET_AND_BRANDING_LICENSE.md` | Covers logo, Lucy artwork, docs, screenshots, branding |
 | `THIRD_PARTY_NOTICES.md` | Third-party tool/library notices |
