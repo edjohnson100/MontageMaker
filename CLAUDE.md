@@ -148,7 +148,7 @@ theme = Dark
 
 ### Known gotchas
 
-- **Folder browser** uses `tkinter.filedialog`, not `app.native.main_window.create_file_dialog` (the pywebview dialog is silent in the NiceGUI 3.x + pywebview 6.x combination)
+- **Folder browser** uses `osascript` on macOS and `tkinter.filedialog` on Windows. `app.native.main_window.create_file_dialog` (pywebview) is silent in the NiceGUI 3.x + pywebview 6.x combination. On macOS, `tkinter.Tk()` spawns a rogue Dock entry and deadlocks on a second call from a NiceGUI event thread — `osascript` runs as a clean subprocess and avoids both issues.
 - **Auto-increment** (`_v2` suffix) is applied for the current run only — never written back to `prefix_in`, or it compounds on repeated runs
 - **ConfigParser DEFAULT inheritance** — `dict(config[section])` includes DEFAULT keys; `_preset_values()` filters them via `inherited = set(config.defaults())`
 - **Image preview on overwrite** — NiceGUI assigns deterministic URLs to local files; same filename = WebView cache hit. All output images are served through `GET /output-image?p=...&t={timestamp}` to force a fresh fetch. Do not revert to `ui.image(path)` for output previews.

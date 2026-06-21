@@ -408,15 +408,30 @@ def index():
         refresh_image_list()
 
     def _pick_folder(title, starting_path):
-        import tkinter as tk
-        from tkinter import filedialog
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)
         initial = starting_path if os.path.isdir(starting_path) else os.path.expanduser('~')
-        result = filedialog.askdirectory(initialdir=initial, title=title)
-        root.destroy()
-        return result
+        if sys.platform == 'darwin':
+            # tkinter creates a rogue Dock entry and deadlocks on second call from a
+            # NiceGUI event thread on macOS. osascript runs as a clean subprocess instead.
+            safe_title = title.replace('"', '\\"')
+            safe_initial = initial.replace('"', '\\"')
+            script = (f'POSIX path of (choose folder with prompt "{safe_title}"'
+                      f' default location POSIX file "{safe_initial}")')
+            try:
+                result = subprocess.check_output(
+                    ['osascript', '-e', script], text=True, stderr=subprocess.DEVNULL
+                ).strip().rstrip('/')
+                return result
+            except subprocess.CalledProcessError:
+                return ''
+        else:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            result = filedialog.askdirectory(initialdir=initial, title=title)
+            root.destroy()
+            return result
 
     def browse_input():
         folder = _pick_folder('Select Image Folder', folder_in.value.strip())
