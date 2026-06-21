@@ -335,3 +335,11 @@ Documentation, original project artwork, logos, screenshots, promotional graphic
 Montage Maker uses or depends on third-party software and tools, including ImageMagick, NiceGUI, FastAPI, pywebview, PyInstaller, Python, and the Microsoft Edge WebView2 Runtime. Each third-party component remains under its own license or terms. See [Third-Party Notices](THIRD_PARTY_NOTICES.md) for details.
 
 The standalone executable includes the Montage Maker application code and Python dependencies, but ImageMagick must be installed separately and available on your system PATH.
+
+### **❤️ Support the Maker (and Lucy\!)**
+
+I develop these tools to improve my own workflows and love sharing them with the community. If you find Montage Maker useful and want to say thanks, feel free to [**buy Lucy a dog treat on Ko-fi**](https://ko-fi.com/makingwithanedj)\!
+
+---
+
+*Happy Making\!* *— EdJ*
