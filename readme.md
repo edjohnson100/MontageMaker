@@ -72,6 +72,8 @@ If `montage -version` does not return a version number, restart your terminal an
 
 ## Recommended: Use the Standalone App
 
+Download the latest release from the **Releases** section in the GitHub sidebar (right side of the repository page).
+
 ### Windows
 
 1. Install ImageMagick using the instructions above.
