@@ -58,8 +58,8 @@ def _probe(*cmds):
 
 def _imagemagick_present():
     return _probe(
-        ["montage", "--version"],
-        ["magick", "montage", "--version"],
+        ["magick", "montage", "--version"],  # IM7 preferred
+        ["montage", "--version"],            # IM6 legacy fallback
     )
 
 
@@ -113,7 +113,7 @@ def _check_system_deps(is_windows):
             _install_mac("imagemagick", "ImageMagick")
         if not _imagemagick_present():
             print(
-                "\n  WARNING: 'montage' command still not found after installation.\n"
+                "\n  WARNING: ImageMagick 'magick' command still not found after installation.\n"
                 "  You may need to open a new terminal so PATH updates take effect,\n"
                 "  then re-run this script."
             )

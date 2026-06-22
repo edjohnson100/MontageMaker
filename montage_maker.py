@@ -52,14 +52,43 @@ def get_all_images():
     """Scans current directory for valid image files and returns them sorted."""
     valid_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
     files = []
-    
+
     for f in os.listdir('.'):
         if os.path.isfile(f):
             ext = os.path.splitext(f)[1].lower()
             if ext in valid_extensions:
                 files.append(f)
-    
+
     return sorted(files)
+
+_MONTAGE_CMD: list | None = None
+
+def _detect_montage_cmd() -> list:
+    """Detect the best available ImageMagick montage command prefix. Result is cached."""
+    global _MONTAGE_CMD
+    if _MONTAGE_CMD is not None:
+        return _MONTAGE_CMD
+    candidates = [
+        (["magick", "montage"], "Using ImageMagick command: magick montage"),
+        (["montage"], "Using legacy ImageMagick command: montage. "
+                      "This is supported, but ImageMagick 7+ is recommended."),
+    ]
+    for prefix, message in candidates:
+        try:
+            result = subprocess.run(
+                prefix + ["-version"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and "ImageMagick" in (result.stdout + result.stderr):
+                logging.info(message)
+                _MONTAGE_CMD = prefix
+                return _MONTAGE_CMD
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            continue
+    raise RuntimeError(
+        "ImageMagick montage was not found. Install ImageMagick 7+ and make sure "
+        "the `magick` command is available on your PATH."
+    )
 
 def create_montages(grid_size, output_extension, tile_geometry, show_labels, prefix, crop_dims, font_size,
                     output_dir=None, background_color='white', quality=None, title='', font_name='',
@@ -90,6 +119,12 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
     logging.info(f"Found {total_images} images. Creating {total_pages} montage pages...")
     logging.info(f"Settings: Grid={grid_size}, Ext={output_extension}, Size={tile_geometry}, Labels={show_labels}, Font={font_size}")
 
+    try:
+        montage_cmd = _detect_montage_cmd()
+    except RuntimeError as e:
+        logging.critical(str(e))
+        return
+
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -104,7 +139,7 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
         
         # 4. Construct Command
         # Pass 1: tile layout (no -title; -fill and -pointsize placed last so IM honours them)
-        cmd = ["montage"]
+        cmd = list(montage_cmd)
 
         if font_name:
             cmd.extend(["-font", font_name])
@@ -160,7 +195,10 @@ def create_montages(grid_size, output_extension, tile_geometry, show_labels, pre
             logging.error(f"Error processing page {i+1}: {stderr_msg}")
             continue
         except FileNotFoundError:
-            logging.critical("Error: 'montage' command not found. Is ImageMagick installed?")
+            logging.critical(
+                "ImageMagick montage was not found. Install ImageMagick 7+ and make sure "
+                "the `magick` command is available on your PATH."
+            )
             return
 
         # Pass 2: splice title banner via convert (gives independent size + color from labels)

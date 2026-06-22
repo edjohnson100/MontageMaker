@@ -44,7 +44,7 @@ python montage_maker.py 2x2 --size "500x500+5+5" --label --fontsize 24
 python setup.py     # creates venv_win or venv_mac, installs ImageMagick
 ```
 
-**System requirement:** ImageMagick must be installed and `montage` must be on PATH.
+**System requirement:** ImageMagick 7+ must be installed with `magick` on PATH. The standalone `montage` command is supported as a legacy fallback for IM6.
 
 ## Architecture
 
@@ -56,8 +56,9 @@ Two entry points share one core engine:
 ### `montage_maker.py` flow
 
 1. `get_all_images()` — scans CWD for `.jpg/.jpeg/.png/.bmp/.gif/.tiff/.webp`, returns sorted list
-2. `create_montages()` — batches images by grid size, builds and runs an ImageMagick `montage` subprocess per page, writes output to `output_dir` (or CWD if None)
-3. Logging goes to both console and `process.log` (in CWD, overwritten each run)
+2. `_detect_montage_cmd()` — probes `magick montage -version` (IM7), falls back to `montage -version` (IM6); result cached in module-level `_MONTAGE_CMD`; called once per process at the start of `create_montages()`
+3. `create_montages()` — batches images by grid size, builds and runs the detected IM command per page, writes output to `output_dir` (or CWD if None)
+4. Logging goes to both console and `process.log` (in CWD, overwritten each run)
 
 `create_montages` signature:
 ```python
@@ -71,7 +72,7 @@ create_montages(grid_size, output_extension, tile_geometry, show_labels,
 
 **Shadow + Polaroid conflict:** when `polaroid` is set, `shadow` is silently ignored by the engine (`-shadow` and `+polaroid` conflict — shadow flattens the layer before polaroid rotation is composited). The UI disables the shadow switch when polaroid is active.
 
-**Two-pass title rendering:** `create_montages` runs `montage` without `-title` (pass 1), then calls `magick` to splice a title banner and annotate it onto each output page (pass 2). This gives the title independent font size (`title_size`) and color (`text_color`) from the labels. Use `magick`, not `convert`, for the second pass — on Windows IM7, `convert.exe` is shadowed by the system binary.
+**Two-pass title rendering:** `create_montages` runs the detected IM command (pass 1) without `-title`, then calls `magick` to splice a title banner and annotate it onto each output page (pass 2). This gives the title independent font size (`title_size`) and color (`text_color`) from the labels. Use `magick`, not `convert`, for the second pass — on Windows IM7, `convert.exe` is shadowed by the system binary.
 
 **`image_files` parameter:** if provided, `get_all_images()` is skipped and the supplied list is used directly. The GUI passes the checked subset from the image-selection panel. CLI never passes this; behaviour is unchanged.
 
@@ -153,7 +154,8 @@ theme = Dark
 - **ConfigParser DEFAULT inheritance** — `dict(config[section])` includes DEFAULT keys; `_preset_values()` filters them via `inherited = set(config.defaults())`
 - **Image preview on overwrite** — NiceGUI assigns deterministic URLs to local files; same filename = WebView cache hit. All output images are served through `GET /output-image?p=...&t={timestamp}` to force a fresh fetch. Do not revert to `ui.image(path)` for output previews.
 - **Shadow + Polaroid** — `-shadow` and `+polaroid` conflict in ImageMagick montage; shadow is skipped in the engine when polaroid is active, and the UI disables the shadow switch via `bind_enabled_from`
-- **Title rendering is two-pass** — `montage` does not honour `-pointsize`/`-fill` placed before `-title` reliably; instead, pass 1 runs `montage` without a title, pass 2 runs `magick` to splice and annotate the title independently. Never revert to putting `-title` in the `montage` command.
+- **Command detection** — `_detect_montage_cmd()` probes `magick montage -version` first (IM7 preferred), then `montage -version` (IM6 fallback); result cached in `_MONTAGE_CMD`. If neither works, `create_montages()` logs critical and returns early. `setup.py` probes in the same order. Do not assume `montage` is available — always use the detected prefix.
+- **Title rendering is two-pass** — `montage` does not honour `-pointsize`/`-fill` placed before `-title` reliably; instead, pass 1 runs the detected IM command without a title, pass 2 runs `magick` to splice and annotate the title independently. Never revert to putting `-title` in the pass-1 command.
 - **`magick` not `convert` for pass 2** — on Windows IM7, `convert.exe` in System32 shadows ImageMagick's `convert`. Use `magick` as the executable for all non-`montage` IM calls.
 - **`SCRIPT_DIR` in frozen exe** — `Path(__file__).parent` resolves to the temp extraction dir in a PyInstaller onefile bundle. Use `Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent`. `config.ini` and `session.ini` must both use `SCRIPT_DIR`.
 - **`nicegui-pack` broken on Windows** — the subprocess spawned by `nicegui-pack` can't find `pyinstaller` because the venv Scripts dir isn't on the subprocess PATH. Use `build.py` instead, which calls `venv_win\Scripts\pyinstaller` directly.
